@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% block content %}
+
+{% if not current_user.is_authenticated %}
+<div class="box">
+  <div id="auth">
+    <h2>Log in</h2>
+    <form id="loginForm">
+      <input name="username" placeholder="username" required />
+      <input name="password" placeholder="password" type="password" required />
+      <button type="submit">Log in</button>
+    </form>
+
+    <hr />
+
+    <h2>Create account</h2>
+    <form id="registerForm">
+      <input name="username" placeholder="username" required />
+      <input name="password" placeholder="password" type="password" required />
+      <button type="submit">Register</button>
+    </form>
+
+    <div id="authMsg" style="color:red; margin-top:10px;"></div>
+  </div>
+</div>
+{% endif %}
+
+<hr />
+
+<!-- Search bar -->
+<div class="box">
+  <h2 style="text-align:center;">Search Stocks</h2>
+  <form id="searchForm" style="text-align:center;" action="javascript:void(0);">
+    <input type="text" name="query" placeholder="Symbol or company name" required />
+    <button type="submit">Search</button>
+  </form>
+
+  <div id="searchResults" style="margin-top:20px; text-align:center;"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Search form
+    const searchForm = document.getElementById('searchForm');
+    searchForm.addEventListener('submit', async function(e){
+        e.preventDefault();
+        const query = this.query.value;
+
+        const res = await fetch('/api/search?q=' + encodeURIComponent(query));
+        const results = await res.json();
+
+        const container = document.getElementById('searchResults');
+        if(results.length === 0){
+            container.innerHTML = 'No results found';
+            return;
+        }
+
+        let html = '<table style="margin:auto; border-collapse: collapse; width: 60%;">';
+        html += '<tr><th>Symbol</th><th>Name</th></tr>';
+        results.forEach(r=>{
+            html += `<tr><td>${r.symbol}</td><td>${r.name}</td></tr>`;
+        });
+        html += '</table>';
+        container.innerHTML = html;
+    });
+});
+</script>
+
+
+<hr />
+
+<!-- Top movers -->
+<div class="box">
+  <h2 style="text-align:center;">Top Movers</h2>
+  <table style="margin:auto; border-collapse: collapse; width: 60%;">
+    <thead>
+      <tr>
+        <th>Symbol</th>
+        <th>Price</th>
+        <th>Change</th>
+        <th>% Change</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in movers %}
+      <tr>
+        <td>{{ m.symbol }}</td>
+        <td>{{ m.price }}</td>
+        <td class="{{ 'positive' if m.change|float >= 0 else 'negative' }}">{{ m.change }}</td>
+        <td class="{{ 'positive' if m.percent_change[:-1]|float >= 0 else 'negative' }}">{{ m.percent_change }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .positive { color: green; }
+  .negative { color: red; }
+  input { padding:5px; margin:5px; }
+  button { padding:5px 10px; }
+</style>
+
+<script>
+// Login form
+document.getElementById('loginForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const username = this.username.value;
+    const password = this.password.value;
+
+    const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username, password})
+    });
+
+    const data = await res.json();
+    if(data.success){
+        window.location.reload(); // reload page to see dashboard/top movers
+    } else {
+        document.getElementById('authMsg').innerText = data.error;
+    }
+});
+
+// Register form
+document.getElementById('registerForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const username = this.username.value;
+    const password = this.password.value;
+
+    const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username, password})
+    });
+
+    const data = await res.json();
+    if(data.success){
+        document.getElementById('authMsg').innerText = 'Account created. You can log in now.';
+    } else {
+        document.getElementById('authMsg').innerText = data.error;
+    }
+});
+
+// Search form
+document.getElementById('searchForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const query = this.query.value;
+
+    const res = await fetch('/api/search?q=' + encodeURIComponent(query));
+    const results = await res.json();
+
+    const container = document.getElementById('searchResults');
+    if(results.length === 0){
+        container.innerHTML = 'No results found';
+        return;
+    }
+
+    let html = '<table style="margin:auto; border-collapse: collapse; width: 60%;">';
+    html += '<tr><th>Symbol</th><th>Name</th></tr>';
+    results.forEach(r=>{
+        html += `<tr><td>${r.symbol}</td><td>${r.name}</td></tr>`;
+    });
+    html += '</table>';
+    container.innerHTML = html;
+});
+</script>
+
+{% endblock %}

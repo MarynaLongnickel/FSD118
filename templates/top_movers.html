@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Top Movers</title>
+    <style>
+        table { border-collapse: collapse; width: 50%; margin: auto; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background-color: #f4f4f4; }
+        .positive { color: green; }
+        .negative { color: red; }
+    </style>
+</head>
+<body>
+    <h1 style="text-align:center;">Top Movers</h1>
+    <table>
+        <tr>
+            <th>Symbol</th>
+            <th>Price</th>
+            <th>Change</th>
+            <th>% Change</th>
+        </tr>
+        {% for m in movers %}
+        <tr>
+            <td>{{ m.symbol }}</td>
+            <td>{{ m.price }}</td>
+            <td class="{{ 'positive' if m.change|float >= 0 else 'negative' }}">{{ m.change }}</td>
+            <td class="{{ 'positive' if m.percent_change[:-1]|float >= 0 else 'negative' }}">{{ m.percent_change }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
