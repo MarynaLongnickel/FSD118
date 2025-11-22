@@ -381,11 +381,38 @@ def create_app():
     # ------------------------------
     # Watchlist API
     # ------------------------------
+    # @app.route('/api/watchlist', methods=['GET'])
+    # @login_required
+    # def get_watchlist():
+    #     items = WatchItem.query.filter_by(user_id=current_user.id).all()
+    #     return jsonify([{'id': it.id, 'symbol': it.symbol, 'name': it.name} for it in items])
     @app.route('/api/watchlist', methods=['GET'])
     @login_required
     def get_watchlist():
         items = WatchItem.query.filter_by(user_id=current_user.id).all()
-        return jsonify([{'id': it.id, 'symbol': it.symbol, 'name': it.name} for it in items])
+        watchlist_data = []
+
+        for it in items:
+            # fetch current price and daily change using yfinance
+            try:
+                ticker = yf.Ticker(it.symbol)
+                info = ticker.info
+                price = info.get('regularMarketPrice', 0)
+                prev_close = info.get('regularMarketPreviousClose', 0)
+                change = price - prev_close
+            except Exception:
+                price = 0
+                change = 0
+
+            watchlist_data.append({
+                'id': it.id,
+                'symbol': it.symbol,
+                'name': it.name,
+                'price': f"{price:.2f}",
+                'change': f"{change:.2f}"
+            })
+
+        return jsonify(watchlist_data)
 
     @app.route('/api/watchlist', methods=['POST'])
     @login_required
