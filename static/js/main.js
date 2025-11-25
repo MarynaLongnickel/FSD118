@@ -13,7 +13,6 @@ async function getJSON(url) {
   return r.json();
 }
 
-// Auth forms (on index page)
 const loginForm = document.getElementById('loginForm');
 if (loginForm) {
   loginForm.addEventListener('submit', async (ev) => {
@@ -39,7 +38,6 @@ if (registerForm) {
   });
 }
 
-// Dashboard logic
 if (document.getElementById('searchInput')) {
   const searchInput = document.getElementById('searchInput');
   const searchResults = document.getElementById('searchResults');
@@ -89,6 +87,5 @@ if (document.getElementById('searchInput')) {
     });
   });
 
-  // initial load
   loadWatchlist();
 }

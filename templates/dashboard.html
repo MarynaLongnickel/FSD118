@@ -1,35 +1,122 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<h1>Dashboard</h1>
-
+<!-- WATCHLIST -->
 <div class="box">
-  <h2 style="text-align:center;">Top Movers</h2>
-  <table style="margin:auto; border-collapse: collapse; width: 60%;">
-    <thead>
-      <tr>
-        <th>Symbol</th>
-        <th>Price</th>
-        <th>Change</th>
-        <th>% Change</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for m in movers %}
-      <tr>
-        <td>{{ m.symbol }}</td>
-        <td>{{ m.price }}</td>
-        <td class="{{ 'positive' if m.change|float >= 0 else 'negative' }}">{{ m.change }}</td>
-        <td class="{{ 'positive' if m.percent_change[:-1]|float >= 0 else 'negative' }}">{{ m.percent_change }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <h2 style="text-align:center;">Watchlist</h2>
+
+  <div id="watchlistContainer" style="text-align:center; margin-top:15px;">
+    Loading...
+  </div>
 </div>
 
 <style>
   .positive { color: green; }
   .negative { color: red; }
+  table { border-collapse: collapse; margin:auto; width:60%; }
+  td, th { padding: 6px 10px; border-bottom: 1px solid #ddd; text-align:center; }
+  button { padding: 4px 8px; }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    const container = document.getElementById('watchlistContainer');
+
+    try {
+        const res = await fetch('/api/watchlist', { credentials: 'include' });
+        const items = await res.json();
+
+        if (!Array.isArray(items) || items.length === 0) {
+            container.innerHTML = '<i>Your watchlist is empty</i>';
+            return;
+        }
+
+        const table = document.createElement('table');
+
+        table.innerHTML = `
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Change</th>
+                <th>%</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector('tbody');
+
+        items.forEach(item => {
+            const tr = document.createElement('tr');
+
+            const tdSym = document.createElement('td');
+            tdSym.textContent = item.symbol;
+            tr.appendChild(tdSym);
+
+            const tdName = document.createElement('td');
+            tdName.textContent = item.name || '';
+            tr.appendChild(tdName);
+
+            const tdPrice = document.createElement('td');
+            tdPrice.textContent = item.price;
+            tr.appendChild(tdPrice);
+
+            const tdChange = document.createElement('td');
+            tdChange.textContent = item.change;
+            tdChange.className = parseFloat(item.change) >= 0 ? 'positive' : 'negative';
+            tr.appendChild(tdChange);
+
+            const tdPercent = document.createElement('td');
+            tdPercent.textContent = item.percent_change;
+            tdPercent.className = parseFloat(item.percent_change.replace('%','')) >= 0 ? 'positive' : 'negative';
+            tr.appendChild(tdPercent);
+
+            const tdRemove = document.createElement('td');
+            const btn = document.createElement('button');
+            btn.textContent = 'Remove';
+            btn.style.backgroundColor = '#f2f2f2';
+
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                btn.textContent = 'Removing...';
+                try {
+                    const r = await fetch(`/api/watchlist/${item.id}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                    });
+                    const out = await r.json();
+                    if (out.success) {
+                        tr.remove();
+                        if (tbody.children.length === 0) {
+                            container.innerHTML = '<i>Your watchlist is empty</i>';
+                        }
+                    } else {
+                        btn.textContent = 'Error';
+                    }
+                } catch (err) {
+                    console.error(err);
+                    btn.textContent = 'Error';
+                }
+            });
+
+            tdRemove.appendChild(btn);
+            tr.appendChild(tdRemove);
+
+            tbody.appendChild(tr);
+        });
+
+        container.innerHTML = '';
+        container.appendChild(table);
+
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = '<span style="color:red;">Error loading watchlist</span>';
+    }
+});
+</script>
+
 
 {% endblock %}

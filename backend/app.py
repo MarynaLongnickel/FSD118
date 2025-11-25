@@ -164,26 +164,29 @@ def create_app():
         watchlist_data = []
 
         for it in items:
-            # fetch current price and daily change using yfinance
             try:
                 ticker = yf.Ticker(it.symbol)
                 info = ticker.info
                 price = info.get('regularMarketPrice', 0)
                 prev_close = info.get('regularMarketPreviousClose', 0)
                 change = price - prev_close
+                percent_change = f"{(change / prev_close * 100):.2f}%" if prev_close else "0%"
             except Exception:
                 price = 0
                 change = 0
+                percent_change = "0%"
 
             watchlist_data.append({
                 'id': it.id,
                 'symbol': it.symbol,
                 'name': it.name,
                 'price': f"{price:.2f}",
-                'change': f"{change:.2f}"
+                'change': f"{change:.2f}",
+                'percent_change': percent_change
             })
 
         return jsonify(watchlist_data)
+
 
     @app.route('/api/watchlist', methods=['POST'])
     @login_required

@@ -50,3 +50,25 @@ a.add-btn {
   margin-left: 8px;
   font-size: 0.9em;
 }
+
+table {
+  border-collapse: collapse;
+  margin: auto;
+  width: 70%;
+}
+
+table th,
+table td {
+  text-align: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.positive {
+  color: green;
+}
+
+.negative {
+  color: red;
+}
+

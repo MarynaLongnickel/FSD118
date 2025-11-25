@@ -38,35 +38,6 @@
   <div id="searchResults" style="margin-top:20px; text-align:center;"></div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Search form
-    const searchForm = document.getElementById('searchForm');
-    searchForm.addEventListener('submit', async function(e){
-        e.preventDefault();
-        const query = this.query.value;
-
-        const res = await fetch('/api/search?q=' + encodeURIComponent(query));
-        const results = await res.json();
-
-        const container = document.getElementById('searchResults');
-        if(results.length === 0){
-            container.innerHTML = 'No results found';
-            return;
-        }
-
-        let html = '<table style="margin:auto; border-collapse: collapse; width: 60%;">';
-        html += '<tr><th>Symbol</th><th>Name</th></tr>';
-        results.forEach(r=>{
-            html += `<tr><td>${r.symbol}</td><td>${r.name}</td></tr>`;
-        });
-        html += '</table>';
-        container.innerHTML = html;
-    });
-});
-</script>
-
-
 <hr />
 
 <!-- Top movers -->
@@ -75,19 +46,33 @@ document.addEventListener('DOMContentLoaded', function() {
   <table style="margin:auto; border-collapse: collapse; width: 60%;">
     <thead>
       <tr>
-        <th>Symbol</th>
-        <th>Price</th>
-        <th>Change</th>
-        <th>% Change</th>
+        <th style="text-align:center">Symbol</th>
+        <th style="text-align:center">Price</th>
+        <th style="text-align:center">Change</th>
+        <th style="text-align:center">% Change</th>
+        <th style="text-align:center">Action</th>
       </tr>
     </thead>
     <tbody>
       {% for m in movers %}
       <tr>
-        <td>{{ m.symbol }}</td>
-        <td>{{ m.price }}</td>
-        <td class="{{ 'positive' if m.change|float >= 0 else 'negative' }}">{{ m.change }}</td>
-        <td class="{{ 'positive' if m.percent_change[:-1]|float >= 0 else 'negative' }}">{{ m.percent_change }}</td>
+        <td style="text-align:center">{{ m.symbol }}</td>
+        <td style="text-align:center">{{ m.price }}</td>
+        <td style="text-align:center" class="{{ 'positive' if m.change|float >= 0 else 'negative' }}">{{ m.change }}</td>
+        <td style="text-align:center" class="{{ 'positive' if m.percent_change[:-1]|float >= 0 else 'negative' }}">{{ m.percent_change }}</td>
+        <td style="text-align:center">
+          {% if current_user.is_authenticated %}
+        <button type="button"
+                class="watchBtn"
+                data-symbol="{{ m.symbol }}"
+                data-name="{{ m.name|default('') }}"
+                {% if m.already_in_watchlist %} disabled {% endif %}>
+            {{ 'Added ✓' if m.already_in_watchlist else 'Add to Watchlist' }}
+        </button>
+          {% else %}
+          <span style="color:gray; font-size:12px;">Login to save</span>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -102,67 +87,208 @@ document.addEventListener('DOMContentLoaded', function() {
 </style>
 
 <script>
-// Login form
-document.getElementById('loginForm').addEventListener('submit', async function(e){
-    e.preventDefault();
-    const username = this.username.value;
-    const password = this.password.value;
+document.addEventListener('DOMContentLoaded', function() {
 
-    const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({username, password})
-    });
+    // --------------------------
+    // LOGIN FORM
+    // --------------------------
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async function(e){
+            e.preventDefault();
+            const username = this.username.value.trim();
+            const password = this.password.value.trim();
+            const authMsg = document.getElementById('authMsg');
 
-    const data = await res.json();
-    if(data.success){
-        window.location.reload(); // reload page to see dashboard/top movers
-    } else {
-        document.getElementById('authMsg').innerText = data.error;
-    }
-});
-
-// Register form
-document.getElementById('registerForm').addEventListener('submit', async function(e){
-    e.preventDefault();
-    const username = this.username.value;
-    const password = this.password.value;
-
-    const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({username, password})
-    });
-
-    const data = await res.json();
-    if(data.success){
-        document.getElementById('authMsg').innerText = 'Account created. You can log in now.';
-    } else {
-        document.getElementById('authMsg').innerText = data.error;
-    }
-});
-
-// Search form
-document.getElementById('searchForm').addEventListener('submit', async function(e){
-    e.preventDefault();
-    const query = this.query.value;
-
-    const res = await fetch('/api/search?q=' + encodeURIComponent(query));
-    const results = await res.json();
-
-    const container = document.getElementById('searchResults');
-    if(results.length === 0){
-        container.innerHTML = 'No results found';
-        return;
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({username, password})
+                });
+                const data = await res.json();
+                if(data.success){
+                    window.location.reload();
+                } else {
+                    authMsg.style.color = 'red';
+                    authMsg.innerText = data.error || 'Login failed';
+                }
+            } catch (err) {
+                console.error(err);
+                authMsg.style.color = 'red';
+                authMsg.innerText = 'Login failed';
+            }
+        });
     }
 
-    let html = '<table style="margin:auto; border-collapse: collapse; width: 60%;">';
-    html += '<tr><th>Symbol</th><th>Name</th></tr>';
-    results.forEach(r=>{
-        html += `<tr><td>${r.symbol}</td><td>${r.name}</td></tr>`;
-    });
-    html += '</table>';
-    container.innerHTML = html;
+    // --------------------------
+    // REGISTER FORM
+    // --------------------------
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm) {
+        registerForm.addEventListener('submit', async function(e){
+            e.preventDefault();
+            const username = this.username.value.trim();
+            const password = this.password.value.trim();
+            const authMsg = document.getElementById('authMsg');
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({username, password})
+                });
+                const data = await res.json();
+                if(data.success){
+                    authMsg.style.color = 'green';
+                    authMsg.innerText = 'Account created. You can log in now.';
+                } else {
+                    authMsg.style.color = 'red';
+                    authMsg.innerText = data.error || 'Registration failed';
+                }
+            } catch (err) {
+                console.error(err);
+                authMsg.style.color = 'red';
+                authMsg.innerText = 'Registration failed';
+            }
+        });
+    }
+
+    // --------------------------
+    // SEARCH FORM
+    // --------------------------
+    const searchForm = document.getElementById('searchForm');
+    const searchResults = document.getElementById('searchResults');
+    const isAuthenticated = "{{ 'true' if current_user.is_authenticated else 'false' }}" === "true";
+
+    if (searchForm) {
+        searchForm.addEventListener('submit', async function(e){
+            e.preventDefault();
+            const query = this.query.value.trim();
+            if(!query) {
+                searchResults.innerHTML = '';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/search?q=' + encodeURIComponent(query));
+                const results = await res.json();
+
+                if(!Array.isArray(results) || results.length === 0){
+                    searchResults.innerHTML = 'No results found';
+                    return;
+                }
+
+                const table = document.createElement('table');
+                table.style = "margin:auto; border-collapse: collapse; width: 70%;";
+                table.innerHTML = `
+                    <thead>
+                        <tr><th>Symbol</th><th>Name</th><th>Action</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                `;
+                const tbody = table.querySelector('tbody');
+
+                results.forEach(r => {
+                    const tr = document.createElement('tr');
+
+                    const tdSym = document.createElement('td');
+                    tdSym.textContent = r.symbol;
+                    tdSym.style.textAlign = 'center';
+                    tr.appendChild(tdSym);
+
+                    const tdName = document.createElement('td');
+                    tdName.textContent = r.name || '';
+                    tdName.style.textAlign = 'center';
+                    tr.appendChild(tdName);
+
+                    const tdAction = document.createElement('td');
+                    tdAction.style.textAlign = 'center';
+
+                    if(isAuthenticated){
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.dataset.symbol = r.symbol;
+                        btn.dataset.name = r.name || '';
+                        btn.textContent = r.already_in_watchlist ? 'Added ✓' : 'Add to Watchlist';
+                        btn.disabled = r.already_in_watchlist;
+
+                        btn.addEventListener('click', async () => {
+                            btn.disabled = true;
+                            btn.textContent = 'Adding...';
+                            try {
+                                const resp = await fetch('/api/watchlist', {
+                                    method: 'POST',
+                                    headers: {'Content-Type':'application/json'},
+                                    credentials:'include',
+                                    body: JSON.stringify({symbol: btn.dataset.symbol, name: btn.dataset.name})
+                                });
+                                const data = await resp.json();
+                                if(data.success) btn.textContent = 'Added ✓';
+                                else btn.textContent = data.error || 'Error';
+                            } catch (err){
+                                console.error(err);
+                                btn.textContent = 'Error';
+                                btn.disabled = false;
+                            }
+                        });
+
+                        tdAction.appendChild(btn);
+                    } else {
+                        const span = document.createElement('span');
+                        span.style.color='gray';
+                        span.style.fontSize='12px';
+                        span.textContent = 'Login to save';
+                        tdAction.appendChild(span);
+                    }
+
+                    tr.appendChild(tdAction);
+                    tbody.appendChild(tr);
+                });
+
+                searchResults.innerHTML = '';
+                searchResults.appendChild(table);
+
+            } catch(err){
+                console.error(err);
+                searchResults.innerHTML = 'Error';
+            }
+        });
+    }
+
+    // --------------------------
+    // TOP MOVERS WATCHLIST BUTTONS
+    // --------------------------
+    if(isAuthenticated){
+        const topButtons = document.querySelectorAll('.watchBtn');
+        topButtons.forEach(btn => {
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                btn.textContent = 'Adding...';
+                try {
+                    const res = await fetch('/api/watchlist', {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'},
+                        credentials:'include',
+                        body: JSON.stringify({symbol: btn.dataset.symbol, name: btn.dataset.name})
+                    });
+                    const data = await res.json();
+                    if(data.success) btn.textContent = 'Added ✓';
+                    else {
+                        btn.textContent = data.error || 'Error';
+                        if(!data.success) btn.disabled = false;
+                    }
+                } catch(err){
+                    console.error(err);
+                    btn.textContent = 'Error';
+                    btn.disabled = false;
+                }
+            });
+        });
+    }
+
 });
 </script>
 
