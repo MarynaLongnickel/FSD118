@@ -38,6 +38,7 @@ def create_app():
 
     # ------------------------------------------------------------------------------------------
     # Fetch top movers
+
     def fetch_top_movers():
         symbols = ['AAPL', 'MSFT', 'GOOG', 'AMZN', 'TSLA']
         movers = []
@@ -89,6 +90,7 @@ def create_app():
 
     # ------------------------------------------------------------------------------------------
     # Search API
+
     @app.route('/api/search', methods=['GET'])
     def search():
         query = request.args.get('q', '').strip()
@@ -124,6 +126,7 @@ def create_app():
 
     # ------------------------------------------------------------------------------------------
     # Auth
+
     @app.route('/api/register', methods=['POST'])
     def register():
         data = request.json
@@ -157,6 +160,7 @@ def create_app():
 
     # ------------------------------------------------------------------------------------------
     # Watchlist API
+    
     @app.route('/api/watchlist', methods=['GET'])
     @login_required
     def get_watchlist():
